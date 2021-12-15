@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  wgrib2:
+    image: sondngyn/wgrib2:aws
+    container_name: wgrib2-2
+    env_file: ./.env
+    entrypoint: /bin/bash
+    environment:
+      - HRRR_BASE_PATH=${HRRR_BASE_PATH}
+      - HRRR_DOWNLOAD_PATH=${HRRR_DOWNLOAD_PATH}
+      - HRRR_ARCHIVE_PATH=${HRRR_ARCHIVE_PATH}
+      - HRRR_LOG_PATH=${HRRR_LOG_PATH}
+      - HRRR_OUTPUT_PATH=${HRRR_OUTPUT_PATH}
+      - HRRR_OUTPUT_BUCKET=${HRRR_OUTPUT_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+    # Change this command to your bash script filename
+    command: ${RUN_COMMAND}
+    volumes:
+      - type: bind
+        source: ${HOST_SCRIPT_ABS_DIR}
+        target: /opt/
+      - type: bind
+        source: ${HOST_DATA_ABS_DIR}
+        target: /srv/
