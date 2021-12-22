@@ -12,8 +12,11 @@ services:
       - HRRR_ARCHIVE_PATH=${HRRR_ARCHIVE_PATH}
       - HRRR_LOG_PATH=${HRRR_LOG_PATH}
       - HRRR_LOGS_BUCKET=${HRRR_LOGS_BUCKET}
+      - HRRR_LOG_GROUP=$HOSTNAME
       - HRRR_OUTPUT_PATH=${HRRR_OUTPUT_PATH}
       - HRRR_OUTPUT_BUCKET=${HRRR_OUTPUT_BUCKET}
+      # Propagate name of host running container(s) to container
+      - HRRR_CONTAINER_HOST=$HOSTNAME
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
@@ -23,6 +26,8 @@ services:
       - type: bind
         source: ${HOST_SCRIPT_ABS_DIR}
         target: /opt/
-      - type: bind
-        source: ${HOST_DATA_ABS_DIR}
-        target: /srv/
+      # Using short volume syntax b/c z/Z flag isn't supported in long volume syntax.
+      # If we're running on selinux system (RHEL, Fedora) we need it for write permission
+      #
+      # FMI https://docs.docker.com/storage/bind-mounts/#configure-the-selinux-label
+      - ${HOST_DATA_ABS_DIR}:/srv/:Z
