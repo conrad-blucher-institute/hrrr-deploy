@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   wgrib2:
-    image: sondngyn/wgrib2:aws
+    image: docker.io/sondngyn/wgrib2:aws
     container_name: wgrib2-2
     env_file: ./.env
     entrypoint: /bin/bash
