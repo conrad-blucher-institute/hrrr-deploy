@@ -72,8 +72,8 @@ extract_prate_basin_data() {
     local path2gribs=$1
     local output_file=$2
 
-    # Create header for CSV output
-    echo "datetime,forecast_lead,lat,lon,prate" > "$output_file"
+    # Initialize output file (wgrib2 CSV has no headers, we'll keep it that way)
+    > "$output_file"
 
     for grib_file in $path2gribs/*.grib2; do
         # In case of no files
@@ -82,51 +82,17 @@ extract_prate_basin_data() {
         local filename=$(basename "$grib_file")
         echo " • Processing $filename" 1>&2
         
-        # Extract date, hour, and forecast lead from filename
-        # Format: hrrr.tHHz.wrfnatfLL.grib2 where HH=hour, LL=lead
-        local run_hour=$(echo "$filename" | sed -n 's/.*\.t\([0-9][0-9]\)z\..*/\1/p')
-        local forecast_lead=$(echo "$filename" | sed -n 's/.*\.wrfnatf\([0-9][0-9]\)\.grib2/\1/p')
-        
-        # Get the date from the parent directory path
-        local run_date=$(echo "$path2gribs" | sed -n 's/.*hrrr\.\([0-9]\{8\}\).*/\1/p')
-        if [[ -z "$run_date" ]]; then
-            # If we can't extract from path, use current processing date
-            run_date=$(basename $(dirname "$path2gribs"))
-        fi
-        
-        # Create datetime string
-        local datetime="${run_date:0:4}-${run_date:4:2}-${run_date:6:2}T${run_hour}:00:00Z"
-        
         # Extract precipitation rate data for the specified lat/lon box
         # Use wgrib2 to extract prate variable within the bounding box
         wgrib2 "$grib_file" -match "PRATE" -small_grib ${LON_MIN_360}:${LON_MAX_360} ${LAT_MIN}:${LAT_MAX} /tmp/subset.grib2 >/dev/null 2>&1
         
         if [[ -f /tmp/subset.grib2 ]]; then
-            # Extract data in CSV format
+            # Extract data in CSV format and append directly to output
             wgrib2 /tmp/subset.grib2 -csv /tmp/prate_data.csv >/dev/null 2>&1
             
             if [[ -f /tmp/prate_data.csv ]]; then
-                # Process CSV data - save raw values without conversion
-                while IFS=',' read -r start_date end_date var_name var_level lon lat value; do
-                    # Skip header line
-                    [[ "$start_date" == "start_date" ]] && continue
-                    
-                    # Convert longitude to -180 to 180 range for output
-                    # wgrib2 may output longitude in different formats depending on the data
-                    
-                    if (( $(awk "BEGIN {print ($lon > 180)}") )); then
-                        # Longitude is in 0-360 format, convert to -180 to 180
-                        local lon_180=$(awk "BEGIN {print $lon - 360}")
-                    else
-                        # Longitude is already in -180 to 180 format, use as-is
-                        local lon_180=$lon
-                    fi
-                    
-                    # Output: datetime, forecast_lead, lat, lon, prate_value
-                    echo "$datetime,$forecast_lead,$lat,$lon_180,$value" >> "$output_file"
-                    
-                done < /tmp/prate_data.csv
-                
+                # Append raw wgrib2 CSV output directly to output file
+                cat /tmp/prate_data.csv >> "$output_file"
                 rm -f /tmp/prate_data.csv
             fi
             
