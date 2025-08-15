@@ -1,0 +1,2 @@
+# This file keeps the data directory structure in version control
+# The actual data files are ignored by .gitignore
