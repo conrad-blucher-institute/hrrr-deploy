@@ -72,8 +72,8 @@ extract_prate_basin_data() {
     local path2gribs=$1
     local output_file=$2
 
-    # Initialize output file (wgrib2 CSV has no headers, we'll keep it that way)
-    > "$output_file"
+    # Add header for wgrib2 CSV format
+    echo "start_time,valid_time,variable,level,longitude,latitude,value" > "$output_file"
 
     for grib_file in $path2gribs/*.grib2; do
         # In case of no files
@@ -115,18 +115,15 @@ process_hrrr_prate() {
     local date_download_path="$HRRR_DOWNLOAD_PATH/hrrr.$pred_date"
     mkdir -p "$date_download_path"
 
+    # Create date-specific output directory
+    local date_output_dir="$HRRR_OUTPUT_PATH/$pred_date"
+    mkdir -p "$date_output_dir"
+
     download_date_prediction_leads $pred_date $prediction_hour "$date_download_path" >>$LOG_FILE 2>&1
     
-    local prate_output_file="$pred_date-$prediction_hour-prate-raw.csv"
-    extract_prate_basin_data "$date_download_path" "$HRRR_OUTPUT_PATH/$prate_output_file" 2>>$LOG_FILE
+    local prate_output_file="$prediction_hour-prate-raw.csv"
+    extract_prate_basin_data "$date_download_path" "$date_output_dir/$prate_output_file" 2>>$LOG_FILE
     
-    # Compress output file to save space
-    local prate_output_zip=$(echo $prate_output_file | sed 's/\.csv$/.zip/')
-    cd $HRRR_OUTPUT_PATH
-    zip -q "$prate_output_zip" "$prate_output_file" \
-        && rm "$prate_output_file" >>$LOG_FILE 2>&1
-    cd -
-
     echo " • Removing downloaded grib2 files" >>$LOG_FILE
     rm -rf "$date_download_path" >>$LOG_FILE 2>&1
 
@@ -138,11 +135,13 @@ process_hrrr_prate() {
 archive_results() {
     local output_path=$1
 
-    for i in $output_path/*.zip; do
-        [[ ! -e "$i" ]] && continue
-        echo " • Archiving $i locally"
-        mv "$i" $HRRR_ARCHIVE_PATH \
-            && echo "   ... Successfully archived $i to $HRRR_ARCHIVE_PATH"
+    # Move completed daily directories to archive
+    for day_dir in $output_path/*/; do
+        [[ ! -d "$day_dir" ]] && continue
+        local day_name=$(basename "$day_dir")
+        echo " • Archiving daily directory $day_name"
+        mv "$day_dir" "$HRRR_ARCHIVE_PATH/" \
+            && echo "   ... Successfully archived $day_name to $HRRR_ARCHIVE_PATH"
     done
 }
 
