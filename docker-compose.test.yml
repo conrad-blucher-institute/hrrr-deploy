@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  hrrr-test:
+    image: sondngyn/wgrib2:latest
+    container_name: hrrr-test-extractor
+    volumes:
+      - ./scripts:/opt
+      - ./data:/data
+      - ./test-output:/test-output
+    working_dir: /opt
+    environment:
+      - HRRR_BASE_PATH=/data
+      - HRRR_DOWNLOAD_PATH=/data/working
+      - HRRR_OUTPUT_PATH=/data/wgrib2-output
+      - HRRR_ARCHIVE_PATH=/data/archive
+    command: tail -f /dev/null  # Keep container running for interactive testing
+    stdin_open: true
+    tty: true

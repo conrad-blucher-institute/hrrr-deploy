@@ -46,7 +46,7 @@ download_date_prediction_leads() {
     
     # Download each forecast lead individually, but check if already exists
     for lead in {01..15}; do
-        local s3_obj_name="hrrr.t${prediction_hour}z.wrfnatf${lead}.grib2"
+        local s3_obj_name="hrrr.t${prediction_hour}z.wrfsfcf${lead}.grib2"
         local local_file_path="$dl_path/$s3_obj_name"
         
         if [[ -f "$local_file_path" ]]; then
