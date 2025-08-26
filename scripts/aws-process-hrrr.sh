@@ -79,7 +79,7 @@ extract_hrrr_basin_data() {
         ["PRATE"]="surface"
         ["TMP"]="2 m above ground"
         ["DPT"]="2 m above ground" 
-        ["PWAT"]="entire atmosphere"
+        ["PWAT"]="entire atmosphere (considered as a single layer)"
         ["VUCSH"]="0-6000 m above ground"
         ["VVCSH"]="0-6000 m above ground"
         ["CAPE"]="0-3000 m above ground"
