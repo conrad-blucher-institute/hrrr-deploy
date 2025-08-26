@@ -82,7 +82,7 @@ extract_hrrr_basin_data() {
         ["PWAT"]="entire atmosphere (considered as a single layer)"
         ["VUCSH"]="0-6000 m above ground"
         ["VVCSH"]="0-6000 m above ground"
-        ["CAPE"]="0-3000 m above ground"
+        ["CAPE"]="90-0 mb above ground"
     )
 
     # Create header with variable+level columns
@@ -214,8 +214,8 @@ Extract HRRR meteorological data for Oso Creek / Corpus Christi basin
 Time Range: February 19, 2015 through March 6, 2021 (default)
 Forecast leads: 1-15 hours
 Cycles: All cycles (00-23Z)
-Variables: PRATE (surface), TMP (1000mb), DPT (1000mb), PWAT (entire_atmosphere), 
-          VUCSH (0-6000m), VVCSH (0-6000m), CAPE (0-3000m)
+Variables: PRATE (surface), TMP (2m), DPT (2m), PWAT (entire_atmosphere), 
+          VUCSH (0-6000m), VVCSH (0-6000m), CAPE (90-0 mb)
 
 <start_date> and <end_date> must be in the format YYYYMMDD
 If no dates provided, will process the full default range
@@ -269,8 +269,8 @@ if [[ ! -e "$LOG_FILE" ]]; then
 # Basin coordinates: Lat($LAT_MIN, $LAT_MAX), Lon($LON_MIN, $LON_MAX)
 # Forecast leads: 1-15 hours
 # Cycles: All cycles (00-23Z)
-# Variables: PRATE (surface), TMP (1000mb), DPT (1000mb), PWAT (entire_atmosphere),
-#           VUCSH (0-6000m), VVCSH (0-6000m), CAPE (0-3000m)
+# Variables: PRATE (surface), TMP (2m), DPT (2m), PWAT (entire_atmosphere),
+#           VUCSH (0-6000m), VVCSH (0-6000m), CAPE (90-0 mb)
 # Units: Raw values (no conversion)
 EOF
 fi
