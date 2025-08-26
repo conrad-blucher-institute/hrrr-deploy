@@ -77,9 +77,9 @@ extract_hrrr_basin_data() {
     # Define variables and their levels
     declare -A variables_levels=(
         ["PRATE"]="surface"
-        ["TMP"]="1000_mb"
-        ["DPT"]="1000_mb" 
-        ["PWAT"]="entire_atmosphere"
+        ["TMP"]="2 m above ground"
+        ["DPT"]="2 m above ground" 
+        ["PWAT"]="entire atmosphere (considered as a single layer)"
         ["VUCSH"]="0-6000_m_above_ground"
         ["VVCSH"]="0-6000_m_above_ground"
         ["CAPE"]="0-3000_m_above_ground"
@@ -109,8 +109,8 @@ extract_hrrr_basin_data() {
             local level="${variables_levels[$variable]}"
             echo "   - Extracting $variable at $level" 1>&2
             
-            # Use wgrib2 to extract variable within the bounding box
-            wgrib2 "$grib_file" -match ":$variable:" -small_grib ${LON_MIN_360}:${LON_MAX_360} ${LAT_MIN}:${LAT_MAX} /tmp/subset_${variable}.grib2 >/dev/null 2>&1
+            # Use wgrib2 to extract variable at specific level within the bounding box
+            wgrib2 "$grib_file" -match ":$variable:$level:" -small_grib ${LON_MIN_360}:${LON_MAX_360} ${LAT_MIN}:${LAT_MAX} /tmp/subset_${variable}.grib2 >/dev/null 2>&1
             
             if [[ -f /tmp/subset_${variable}.grib2 ]]; then
                 # Extract data in CSV format
