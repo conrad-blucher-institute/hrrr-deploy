@@ -40,3 +40,6 @@ __pycache__/
 
 # Keep scripts directory
 !scripts/
+
+# HPC logs
+logs/
