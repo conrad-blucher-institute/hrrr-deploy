@@ -53,6 +53,27 @@ The extraction focuses on:
 ### Docker
 - `docker-compose.yml` - Docker configuration for containerized processing
 
+## Checkpoint Feature
+
+The extraction script includes a checkpoint system that allows processing to resume from where it left off if the container is stopped or crashes:
+
+- **Enabled by default**: Set `ENABLE_CHECKPOINT=true` in environment or `.env` file
+- **Disable checkpoints**: Set `ENABLE_CHECKPOINT=false` to always start from the beginning
+- **Checkpoint file**: `data/output/processing_checkpoint.txt` stores current position as `year,day_of_year,hour`
+- **Manual control**: You can manually edit the checkpoint file to resume from a specific date/time
+
+**Examples:**
+```bash
+# Run with checkpoints enabled (default)
+ENABLE_CHECKPOINT=true docker compose up
+
+# Run without checkpoints (always start from beginning)
+ENABLE_CHECKPOINT=false docker compose up
+
+# Manually set checkpoint to January 15, 2020, hour 12
+echo "2020,15,12" > data/output/processing_checkpoint.txt
+```
+
 ## Requirements
 
 ### System Requirements

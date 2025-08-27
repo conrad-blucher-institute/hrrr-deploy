@@ -12,6 +12,8 @@ services:
       - HRRR_ARCHIVE_PATH=/srv/archive
       - HRRR_LOG_PATH=/srv/logs
       - HRRR_OUTPUT_PATH=/srv/output
+      # Processing options
+      - ENABLE_CHECKPOINT=${ENABLE_CHECKPOINT:-true}
     # Default command - runs the HRRR extraction script
     command: ${RUN_COMMAND:-/opt/aws-process-hrrr.sh}
     volumes:

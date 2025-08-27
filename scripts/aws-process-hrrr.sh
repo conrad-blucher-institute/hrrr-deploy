@@ -11,6 +11,36 @@ shopt -s extglob    # Extended globbing (pattern matching) support
 # Location: Oso Creek / Corpus Christi basin (lat/lon box)
 # Output: Pivoted CSV with columns: start_time,long,lat,valid_time,variable+level
 
+# Configuration
+ENABLE_CHECKPOINT=${ENABLE_CHECKPOINT:-true}  # Set to 'false' to disable checkpoint feature
+
+# Checkpoint file to track processing progress
+CHECKPOINT_FILE="$HRRR_OUTPUT_PATH/processing_checkpoint.txt"
+
+# Function to save checkpoint
+save_checkpoint() {
+    if [[ "$ENABLE_CHECKPOINT" == "true" ]]; then
+        local year=$1
+        local doy=$2
+        local hour=$3
+        echo "CHECKPOINT: Saving $year,$doy,$hour to $CHECKPOINT_FILE"
+        echo "$year,$doy,$hour" > "$CHECKPOINT_FILE"
+        echo "CHECKPOINT: Saved checkpoint file"
+    fi
+}
+
+# Function to load checkpoint
+load_checkpoint() {
+    if [[ "$ENABLE_CHECKPOINT" == "true" && -f "$CHECKPOINT_FILE" ]]; then
+        local checkpoint=$(cat "$CHECKPOINT_FILE" | tr -d '\r')
+        echo "$checkpoint"
+        return 0
+    else
+        echo ""
+        return 1
+    fi
+}
+
 # Oso Creek / Corpus Christi basin coordinates
 # Lat/Lon bounds: (27.588733, 27.837343, -97.729247, -97.251896)
 LAT_MIN=27.588733
@@ -308,6 +338,36 @@ echo "Processing HRRR prate data from $START_DATE [$year1 $doy1] to $END_DATE [$
 day_count=0
 y=$year1
 d=$doy1
+start_hour=0
+
+# Check for existing checkpoint to resume processing
+echo "Checkpoint feature: $([[ "$ENABLE_CHECKPOINT" == "true" ]] && echo "ENABLED" || echo "DISABLED")"
+checkpoint=$(load_checkpoint)
+if [[ -n "$checkpoint" ]]; then
+    IFS=',' read -r checkpoint_year checkpoint_doy checkpoint_hour <<< "$checkpoint"
+    echo "Found checkpoint: Year $checkpoint_year, Day $checkpoint_doy, Hour $checkpoint_hour"
+    echo "Resuming from checkpoint..." >>$LOG_FILE
+    
+    # Resume from checkpoint if it's within our processing range
+    if (( checkpoint_year >= year1 && checkpoint_year <= year2 )); then
+        if (( checkpoint_year < year2 )) || (( checkpoint_year == year2 && checkpoint_doy <= doy2 )); then
+            y=$checkpoint_year
+            d=$checkpoint_doy
+            start_hour=$((10#$checkpoint_hour))
+            echo "Resuming processing from $y/$d hour $start_hour"
+        else
+            echo "Checkpoint is beyond processing range, starting from beginning"
+        fi
+    else
+        echo "Checkpoint is outside processing range, starting from beginning"
+    fi
+else
+    if [[ "$ENABLE_CHECKPOINT" == "true" ]]; then
+        echo "No checkpoint found, starting from beginning"
+    else
+        echo "Checkpoint disabled, starting from beginning"
+    fi
+fi
 
 # Main processing loop
 while (( y < year2 )) || (( y == year2 && d <= doy2 )); do
@@ -317,11 +377,33 @@ while (( y < year2 )) || (( y == year2 && d <= doy2 )); do
     if [[ ${when:0:4} -eq "$y" ]]; then
         echo "Processing date: $when"
         
-        # Process all prediction hours (00-23) for each day
-        for ph in {00..23}; do
+        # Process all prediction hours (start_hour-23) for each day
+        for ph in $(seq -f "%02g" $start_hour 23); do
             echo "  Processing prediction hour: $ph"
             process_hrrr_prate $when $ph
+            
+            # Calculate next position to save in checkpoint
+            next_hour=$((10#$ph + 1))
+            if (( next_hour <= 23 )); then
+                # Save next hour of same day
+                save_checkpoint $y $d $(printf "%02d" $next_hour)
+            else
+                # Save first hour of next day
+                next_d=$((d + 1))
+                next_y=$y
+                
+                # Handle year rollover for day 366 (or 365 in non-leap years)
+                if (( (next_y % 4 == 0 && (next_y % 100 != 0 || next_y % 400 == 0)) && next_d > 366 )) || 
+                   (( (next_y % 4 != 0 || (next_y % 100 == 0 && next_y % 400 != 0)) && next_d > 365 )); then
+                    next_d=1
+                    next_y=$((next_y + 1))
+                fi
+                save_checkpoint $next_y $next_d "00"
+            fi
         done
+        
+        # Reset start_hour for next day
+        start_hour=0
         
         # Archive results for this day (no S3 upload)
         archive_results "$HRRR_OUTPUT_PATH" >>$LOG_FILE 2>&1
@@ -348,6 +430,12 @@ END_TIME=`date '+%s'`
 DELTA=$((END_TIME - START_TIME))
 echo "# [Final] Processed $PROCESS_COUNT HRRR grib2 files in $DELTA seconds" >>$LOG_FILE
 echo "Processing complete. Total time: $DELTA seconds, Files processed: $PROCESS_COUNT"
+
+# Remove checkpoint file on successful completion
+if [[ -f "$CHECKPOINT_FILE" ]]; then
+    rm -f "$CHECKPOINT_FILE"
+    echo "Checkpoint file removed - processing completed successfully"
+fi
 
 # Estimate total runs processed
 total_days=$day_count
