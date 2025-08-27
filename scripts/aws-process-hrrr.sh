@@ -109,8 +109,12 @@ extract_hrrr_basin_data() {
             local level="${variables_levels[$variable]}"
             echo "   - Extracting $variable at $level" 1>&2
             
+            # Escape parentheses in level string for regex matching
+            local escaped_level="${level//\(/\\(}"
+            escaped_level="${escaped_level//\)/\\)}"
+            
             # Use wgrib2 to extract variable at specific level within the bounding box
-            wgrib2 "$grib_file" -match ":$variable:$level:" -small_grib ${LON_MIN_360}:${LON_MAX_360} ${LAT_MIN}:${LAT_MAX} /tmp/subset_${variable}.grib2 >/dev/null 2>&1
+            wgrib2 "$grib_file" -match ":$variable:$escaped_level:" -small_grib ${LON_MIN_360}:${LON_MAX_360} ${LAT_MIN}:${LAT_MAX} /tmp/subset_${variable}.grib2 >/dev/null 2>&1
             
             if [[ -f /tmp/subset_${variable}.grib2 ]]; then
                 # Extract data in CSV format

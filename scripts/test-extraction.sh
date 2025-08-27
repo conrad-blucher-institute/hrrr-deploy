@@ -2,14 +2,14 @@
 
 # Test script for HRRR data extraction
 # Usage: ./test-extraction.sh <input_grib2_file> <output_csv_file>
-# Example: ./test-extraction.sh data/working/hrrr.20150219/hrrr.t00z.wrfnatf01.grib2 test-output.csv
+# Example: ./test-extraction.sh data/working/hrrr.20150219/hrrr.t00z.wrfsfcf01.grib2 test-output.csv
 
 set -e  # Exit on any error
 
 # Check arguments
 if [[ $# -ne 2 ]]; then
     echo "Usage: $0 <input_grib2_file> <output_csv_file>"
-    echo "Example: $0 data/working/hrrr.20150219/hrrr.t00z.wrfnatf01.grib2 test-output.csv"
+    echo "Example: $0 data/working/hrrr.20150219/hrrr.t00z.wrfsfcf01.grib2 test-output.csv"
     exit 1
 fi
 
@@ -55,12 +55,12 @@ test_extract_hrrr_basin_data() {
     # Define variables and their exact level strings as they appear in GRIB files
     declare -A variables_levels=(
         ["PRATE"]="surface"
-        ["TMP"]="1000 mb"
-        ["DPT"]="1000 mb" 
-        ["PWAT"]="entire atmosphere"
+        ["TMP"]="2 m above ground"
+        ["DPT"]="2 m above ground" 
+        ["PWAT"]="entire atmosphere (considered as a single layer)"
         ["VUCSH"]="0-6000 m above ground"
         ["VVCSH"]="0-6000 m above ground"
-        ["CAPE"]="0-3000 m above ground"
+        ["CAPE"]="90-0 mb above ground"
     )
 
     # Create header with variable+level columns (spaces replaced with underscores)
@@ -97,21 +97,44 @@ test_extract_hrrr_basin_data() {
     wgrib2 "$subset_file" -var -lev
     echo
     
-    # Step 2: Extract all variables from the subset in one operation
+    # Step 2: Extract each variable separately (like the main script)
     local temp_csv="/tmp/test_all_variables_$(basename "$input_grib" .grib2).csv"
     echo "Extracting all variables from subset..."
     
-    # Use a single wgrib2 call to extract all variables
-    if ! wgrib2 "$subset_file" -csv "$temp_csv" \
-        -match ":PRATE:surface:" \
-        -match ":TMP:1000 mb:" \
-        -match ":DPT:1000 mb:" \
-        -match ":PWAT:entire atmosphere:" \
-        -match ":VUCSH:0-6000 m above ground:" \
-        -match ":VVCSH:0-6000 m above ground:" \
-        -match ":CAPE:0-3000 m above ground:"; then
-        echo "Warning: Some variables may not have been extracted from $filename"
-    fi
+    # Create empty temp CSV file
+    > "$temp_csv"
+    
+    # Extract each variable separately
+    for variable in "${!variables_levels[@]}"; do
+        local level="${variables_levels[$variable]}"
+        echo "   - Extracting $variable at $level"
+        
+        # Extract variable at specific level from the subset
+        local var_subset="/tmp/subset_${variable}_$(basename "$input_grib" .grib2).grib2"
+        
+        # Escape parentheses in level string for regex matching
+        local escaped_level="${level//\(/\\(}"
+        escaped_level="${escaped_level//\)/\\)}"
+        
+        if wgrib2 "$subset_file" -match ":$variable:$escaped_level:" -grib "$var_subset" >/dev/null 2>&1; then
+            # Convert to CSV and append to main CSV
+            local var_csv="/tmp/${variable}_data_$(basename "$input_grib" .grib2).csv"
+            if wgrib2 "$var_subset" -csv "$var_csv" >/dev/null 2>&1; then
+                # Append to main CSV file (skip header if not first variable)
+                if [[ -s "$temp_csv" ]]; then
+                    # Skip header line when appending
+                    tail -n +2 "$var_csv" >> "$temp_csv"
+                else
+                    # Include header for first variable
+                    cat "$var_csv" >> "$temp_csv"
+                fi
+                rm -f "$var_csv"
+            fi
+            rm -f "$var_subset"
+        else
+            echo "   - Warning: No data found for $variable at $level"
+        fi
+    done
 
     # Show what was extracted
     if [[ -f "$temp_csv" ]] && [[ -s "$temp_csv" ]]; then
