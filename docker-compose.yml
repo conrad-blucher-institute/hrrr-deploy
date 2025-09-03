@@ -1,4 +1,3 @@
-
 services:
   wgrib2:
     image: sondngyn/wgrib2:aws
@@ -26,4 +25,7 @@ services:
       - type: bind
         source: ${HOST_DATA_ABS_DIR}
         target: /srv/
-    restart: "no"  # Don't restart automatically on failure
+    restart: "always"
+    # Resource limits to prevent high CPU usage
+    # cpus: 12.0
+    # mem_limit: 64g
