@@ -29,5 +29,5 @@ services:
     # Run as non-root user (matches host user for file permissions)
     user: "${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000}"
     # Resource limits to prevent high CPU usage
-    cpus: 12.0
-    mem_limit: 64g
+    cpus: 2.0
+    mem_limit: 4g
